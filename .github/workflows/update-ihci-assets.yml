@@ -1,0 +1,30 @@
+name: Temporary IHCI asset loader
+on:
+  push:
+    paths:
+      - '.github/workflows/update-ihci-assets.yml'
+permissions:
+  contents: write
+jobs:
+  load-assets:
+    if: github.event.head_commit.message == 'Temporary IHCI asset loader'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download exact presentation and paper
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 'https://sdmntprcentralindia.oaiusercontent.com/files/00000000-7e34-8208-9e26-83a4b764682b/raw?se=2026-10-27T00%3A44%3A29Z&sp=r&sv=2026-02-06&sr=b&scid=488062f0-d1ff-5a65-a850-5e09a43dae77&skoid=3cb6de21-012a-49c9-9402-a1ebf8d0bd06&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-10-26T23%3A19%3A14Z&ske=2026-10-27T23%3A19%3A14Z&sks=b&skv=2026-02-06&sig=KU/SYM8kf%2BjaDU/nha8laibXm6w/iXTlwL1QclWiSyw%3D' --output assets/IHCI2026.pptx
+          curl --fail --location --retry 3 'https://sdmntprcentralindia.oaiusercontent.com/files/00000000-5858-8208-a0b3-70f2cfda48f8/raw?se=2026-10-27T00%3A44%3A33Z&sp=r&sv=2026-02-06&sr=b&scid=f31259f7-3a6a-5269-b906-e6ee27cc4e44&skoid=3cb6de21-012a-49c9-9402-a1ebf8d0bd06&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-10-26T23%3A16%3A18Z&ske=2026-10-27T23%3A16%3A18Z&sks=b&skv=2026-02-06&sig=t1fAsMBGhfL4ceIB/m9saMeYOv2Ur1tNRpGvFR49UPI%3D' --output assets/intentspider_paper.pdf
+          cp assets/intentspider_paper.pdf assets/intentspider_paper1.pdf
+          test "$(stat -c%s assets/IHCI2026.pptx)" -eq 28740909
+          test "$(stat -c%s assets/intentspider_paper.pdf)" -eq 1920291
+      - name: Commit assets
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/IHCI2026.pptx assets/intentspider_paper.pdf assets/intentspider_paper1.pdf
+          git commit -m "Add IHCI 2026 presentation and replace paper PDF"
+          git push
