@@ -76,6 +76,7 @@ nav a {
   text-decoration: none;
   margin-left: 15px;
   font-weight: bold;
+  white-space: nowrap;
 }
 footer a {
   color: #0031A7 !important;
