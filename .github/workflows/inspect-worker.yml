@@ -26,7 +26,7 @@ jobs:
           if(response.headers.get('content-type')?.includes('multipart/')){
             const form=await response.formData();
             for(const [key,value] of form.entries()){
-              if(typeof value!=='string') parts.push({key, type:value.type, text:await value.text()});
+              parts.push({key, type:typeof value==='string'?'text':value.type, text:typeof value==='string'?value:await value.text()});
             }
           }else parts.push({key:'script',type:response.headers.get('content-type'),text:await response.text()});
           for(const part of parts){
