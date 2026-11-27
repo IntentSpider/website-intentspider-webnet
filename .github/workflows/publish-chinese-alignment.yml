@@ -1,0 +1,28 @@
+name: Publish Chinese website alignment
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare existing static site
+        shell: bash
+        run: |
+          mkdir site
+          git archive HEAD | tar -x -C site
+          rm -rf site/.github site/.vscode site/.wrangler site/cloudflare-worker
+          rm -f site/.gitignore site/DEPLOY_INTENTSPIDER.bat site/assets/largedataset.txt site/assets/IHCI2026.pptx
+          test -s site/cn/index.html
+          test -s site/cn/about.html
+          test -s site/cn/whatsnew/index.html
+          test -s site/cn/wasm/intentspider.wasm
+          test -z "$(find site -type f -size +26214400c -print)"
+      - name: Publish existing Cloudflare Pages project
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy site --project-name website-intentspider-webnet --branch main
