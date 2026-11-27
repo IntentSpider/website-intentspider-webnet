@@ -1,0 +1,47 @@
+name: Inspect deployed IntentSpider Worker
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect redirect without exposing credentials or state
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          if(!token || !account) throw Error('Missing existing Cloudflare integration');
+          const base='https://api.cloudflare.com/client/v4/accounts/'+account;
+          const headers={Authorization:'Bearer '+token};
+          const response=await fetch(base+'/workers/scripts/intentspider-state-api',{headers});
+          console.log('Worker download HTTP',response.status,'type',response.headers.get('content-type'));
+          if(!response.ok) throw Error('Cannot download live Worker');
+          const parts=[];
+          if(response.headers.get('content-type')?.includes('multipart/')){
+            const form=await response.formData();
+            for(const [key,value] of form.entries()){
+              if(typeof value!=='string') parts.push({key, type:value.type, text:await value.text()});
+            }
+          }else parts.push({key:'script',type:response.headers.get('content-type'),text:await response.text()});
+          for(const part of parts){
+            console.log('Module',part.key,part.type,'length',part.text.length);
+            const lines=part.text.split('\n');
+            const matches=lines.map((line,i)=>({line,i})).filter(({line})=>/intentspider\.github\.io|location\.replace|CORS_ORIGIN|redirect|Access-Control-Allow-Origin|function handleStats/.test(line));
+            for(const {line,i} of matches){
+              if(line.length>2000 || /password|secret|token|auth_key|api_key/i.test(line) && !/tokensIndexed/.test(line)){console.log('Matching line',i+1,'omitted due to length or sensitivity');continue;}
+              console.log('Matching line',i+1,line.slice(0,1400));
+            }
+          }
+          const projects=await fetch(base+'/pages/projects',{headers});
+          console.log('Pages list HTTP',projects.status);
+          if(projects.ok){
+            const data=await projects.json();
+            console.log('Matching Pages project',JSON.stringify(data.result?.filter(p=>p.name==='website-intentspider-webnet').map(p=>({name:p.name,source:p.source?.type??null,production_branch:p.production_branch,domains:p.domains}))));
+          }
+          JS
